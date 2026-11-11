@@ -1051,7 +1051,8 @@ function harvest(ac, out, t0) {
    the tune, the tune with a marimba in harmony and claps, a bridge on the guitar
    with the marimba answering, the tune with everything, then a music-box breather.
    Around it, the guests squeak happily. During the finale (reading the party's
-   sign) it stays on "everything", with bells running over the top. */
+   sign) it stays on "everything", with bells running over the top.
+   zone5.mp3 (see BGM) now plays instead of this tune; the guests' squeaks carry on. */
 const PARTY_CHORDS = { // [bass note, ukulele voicing], MIDI
   G: [43, [62, 67, 71, 74]],
   Em: [40, [59, 64, 67, 71]],
@@ -1446,12 +1447,14 @@ export const SFX = {
 /* A soundscape with a file here plays it instead of its own `tune`, and keeps the
    rest of its sounds. `end` is where the song's sound stops, in seconds: the files
    trail off into silence (zone3.mp3 has 37 seconds of it), which the loop skips.
-   `start` is where it begins, and where it loops back to, if that's not the top. */
+   `start` is where it begins, and where it loops back to, if that's not the top.
+   `volume` scales that one song against the others (1 = normal). */
 const BGM = {
   cutesy:  { url: new URL('../assets/bgm/zone1.mp3', import.meta.url).href, end: 125.6 },
   gym:     { url: new URL('../assets/bgm/zone2.mp3', import.meta.url).href, start: 35, end: 210.9 },
   cozy:    { url: new URL('../assets/bgm/zone3.mp3', import.meta.url).href, end: 184 },
   harvest: { url: new URL('../assets/bgm/zone4.mp3', import.meta.url).href, end: 255.2 },
+  party:   { url: new URL('../assets/bgm/zone5.mp3', import.meta.url).href, end: 264.3, volume: 0.7 },
 };
 // They start loading with the page, so a song is ready to go when its fade starts
 for (const song of Object.values(BGM)) {
@@ -1480,7 +1483,7 @@ function start() {
   for (const song of Object.values(BGM)) {
     const level = gain(ac, 0);
     chain(new MediaElementAudioSourceNode(ac, { mediaElement: song.audio }), level, master);
-    song.fade = fader(level.gain, BGM_VOLUME);
+    song.fade = fader(level.gain, BGM_VOLUME * (song.volume ?? 1));
   }
   setInterval(schedule, 50);
   crossfadeTo(wanted);

@@ -4,7 +4,8 @@
 /* of mats to hide behind, then zigzagging between ledges that stick   */
 /* out of the side walls, and last of all over platforms that move,    */
 /* with the gym characters up on the rims on both sides, throwing      */
-/* things. Coordinates are local to the room's center, and `y` is the  */
+/* things. Coordinates are local to the zone's center (TRENCH says     */
+/* where the room's ends are around it), and `y` is the                */
 /* height of a platform's top. A platform has `r` if it's round, or    */
 /* `w` (along X) and `d` (along Z) if it's a box.                      */
 /*                                                                      */
@@ -17,7 +18,11 @@
 /* any of this: it tests every jump against the game's real physics.   */
 /* There's nothing but numbers in this file, so that tool can read it. */
 /* ------------------------------------------------------------------ */
-export const TRENCH = { halfX: 85, halfZ: 6 }; // halfZ is where the trench's walls stand
+// The trench runs from `west` to `east`, and its walls stand at `halfZ` either side.
+// It's longer to the west than the east, for the flat floor, so the room's middle is at `midX`
+export const TRENCH = { west: -105, east: 85, halfZ: 6 };
+TRENCH.midX = (TRENCH.west + TRENCH.east) / 2;
+TRENCH.halfX = (TRENCH.east - TRENCH.west) / 2; // half the room's length, from `midX`
 export const HALL_HALF_Z = 16;                 // the room's outer walls, past the rims
 export const CEILING = 24;
 export const PIT_WEST = -22;                   // the pit starts here, past the flat floor
@@ -26,7 +31,7 @@ export const CYCLE = 6;                        // the seconds a moving platform 
 
 // The tops of the trench's walls, stepping up as the course does, so the
 // characters stand about level with you: [from x, to x, height]
-export const RIMS = [[-TRENCH.halfX, -14, 8.5], [-14, 32, 10.5], [32, TRENCH.halfX, 13]];
+export const RIMS = [[TRENCH.west, -14, 8.5], [-14, 32, 10.5], [32, TRENCH.east, 13]];
 export const rimAt = (x) => RIMS.find(([, to]) => x <= to)[2];
 
 // A ledge sticks out of the south wall (side 1) or the north wall (side -1)
@@ -34,16 +39,27 @@ const ledge = (x, side, y, w, d, move) => ({ x, z: side * (TRENCH.halfZ - d / 2)
 const stair = (x, y, w = 3) => ({ x, z: 0, y, w, d: TRENCH.halfZ * 2, solid: true, stair: true });
 const deck = (x, y, w, more) => ({ x, z: 0, y, w, d: TRENCH.halfZ * 2, deck: true, ...more });
 
+// A flight of `steps` equal stairs, wall to wall, going up east from height y0 at x0 to
+// a deck's edge at x1, height y1. You walk it as a smooth slope through the middle of
+// each step (see SLOPES), so you go up without bumping from step to step
+function flight(x0, x1, y0, y1, steps) {
+  const run = (x1 - x0) / steps, rise = (y1 - y0) / (steps + 1);
+  const stairs = Array.from({ length: steps }, (_, i) => stair(x0 + run * (i + 0.5), y0 + rise * (i + 1), run));
+  const slope = { x0, x1, z: 0, d: TRENCH.halfZ * 2, stair: true, points: [[x0, y0], ...stairs.map((s) => [s.x, s.y]), [x1, y1]] };
+  for (const s of stairs) s.slope = slope;
+  return stairs;
+}
+
 const FLOOR_Y = 4.8;
 
 export const PLATFORMS = [
   // Up the stairs from the K-Town door, to the first deck
-  stair(-75.5, 0.8), stair(-72.5, 1.6), stair(-69.5, 2.4), stair(-66.5, 3.2), stair(-63.5, 4),
-  deck(-58.5, FLOOR_Y, 7, { solid: true, stair: true }),
-  // Section 1: a flat floor, wall to wall, with nothing to fall off (see COVER), and
-  // steps low enough to walk up to the next deck
-  { x: -41, z: 0, y: FLOOR_Y, w: 28, d: TRENCH.halfZ * 2, solid: true, ground: true },
-  stair(-26.375, 5.06, 1.25), stair(-25.125, 5.32, 1.25), stair(-23.875, 5.58, 1.25), stair(-22.625, 5.84, 1.25),
+  ...flight(-97, -82, 0, FLOOR_Y, 19),
+  deck(-78.5, FLOOR_Y, 7, { solid: true, stair: true }),
+  // Section 1: a long flat floor, wall to wall, with nothing to fall off (see COVER), and
+  // stairs up to the next deck
+  { x: -51, z: 0, y: FLOOR_Y, w: 48, d: TRENCH.halfZ * 2, solid: true, ground: true },
+  ...flight(-27, -22, FLOOR_Y, 6.1, 4),
   deck(-18, 6.1, 8),
   // Section 2: a little smaller
   ledge(-10, -1, 6.4, 4.5, 5),
@@ -68,9 +84,14 @@ export const DECKS = PLATFORMS.filter((p) => p.deck);
 export const FINISH = DECKS[DECKS.length - 1];
 
 // The cover on section 1's floor: stacks of gym mats that stop anything thrown at you.
-// They're too tall to jump on to. [x, z, w, d], with barricades off alternate walls
+// They're too tall to jump on to. [x, z, w, d]: mostly barricades off alternate walls,
+// with a pair to squeeze between and a block in the middle to go round
 const COVER_TALL = 2;
 export const COVER = [
+  [-70, 2.75, 1.5, 6.5],
+  [-64, -2.75, 1.5, 6.5],
+  [-57, -3.75, 3, 4.5],
+  [-57, 3.75, 3, 4.5],
   [-50, -2.75, 1.5, 6.5],
   [-44, 2.75, 1.5, 6.5],
   [-38, 0, 3, 3],
@@ -78,6 +99,18 @@ export const COVER = [
   [-32, 4.5, 1.5, 3],
 ].map(([x, z, w, d]) => ({ x, z, w, d, y: FLOOR_Y + COVER_TALL, floor: FLOOR_Y, solid: true }));
 const SOLIDS = [...PLATFORMS, ...COVER];
+const SLOPES = [...new Set(PLATFORMS.map((p) => p.slope).filter(Boolean))];
+
+// How high a flight of stairs is to walk on at (x, z), or null off it: along a line
+// through the middle of each step, so you're never more than half a step off its top
+function slopeHeight(s, x, z) {
+  if (x < s.x0 || x > s.x1 || Math.abs(z - s.z) > s.d / 2) return null;
+  const { points } = s;
+  let i = 1;
+  while (i < points.length - 1 && points[i][0] < x) i++;
+  const [ax, ay] = points[i - 1], [bx, by] = points[i];
+  return ay + ((x - ax) / (bx - ax)) * (by - ay);
+}
 
 const THICKNESS = 0.5;
 const FOOT = 0.3;         // your middle can be this far past an edge and you're still standing on it
@@ -135,8 +168,14 @@ export const COURSE = {
 
   // The highest thing to stand on at or below height y: a platform, or else the floor
   surfaceBelow(x, y, z) {
+    // Nothing hangs over the stairs, so on them it's the slope you walk them by
+    for (const s of SLOPES) {
+      const h = slopeHeight(s, x, z);
+      if (h !== null && h <= y) return h;
+    }
     let best = 0;
     for (const p of SOLIDS) {
+      if (p.slope && slopeHeight(p.slope, x, z) === null) continue; // past the slope's ends, a step's edge isn't something to stand on
       if (p.y > best && p.y <= y && pastEdge(p, x, z) <= FOOT) best = p.y;
     }
     return best;
@@ -144,7 +183,8 @@ export const COURSE = {
 
   // The platform at that height, if it's one you're standing on
   platformAt(x, y, z) {
-    return PLATFORMS.find((p) => p.y === y && pastEdge(p, x, z) <= FOOT) ?? null;
+    return SLOPES.find((s) => slopeHeight(s, x, z) === y)
+      ?? PLATFORMS.find((p) => p.y === y && pastEdge(p, x, z) <= FOOT) ?? null;
   },
 
   // The cover that something of radius r has run into the side of, if any

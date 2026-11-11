@@ -19,8 +19,11 @@ const SIGN_FONT = '"Arial Black", "Helvetica Neue", Arial, sans-serif';
 const NEON_GLOW = 2.1;       // how bright the neon signs are (see kit.js's glow)
 const THROWER_Z = 9;         // how far from the middle the characters stand, up on the rims
 
+// How fast things fly in each section, as a multiple of their usual speed (gymthrowers.js).
+// The flat floor's faster, since there's cover to hide behind and nothing to fall off
+const THROW_PACE = [1.35, 1, 1];
 // Seconds between throws in each section, longer if you've fallen a lot there...
-const THROW_EVERY = [1.4, 1.1, 0.7];
+const THROW_EVERY = [0.8, 1.1, 0.7];
 const EASE_AFTER = 3;        // ...after this many falls in a section...
 const EASED = 1.6;           // ...by this much...
 const STOP_AFTER = 6;        // ...and after this many they stop throwing altogether
@@ -39,14 +42,15 @@ export const GYM = {
   ceiling: CEILING - 1.5,    // the camera stays under this, and clear of the ducts
   course: COURSE,
   viewYaw: -Math.PI / 2,     // up on the course, the camera looks along the trench
-  // Walkable rectangle = inside the trench's walls (the player stops 1 unit short)
-  bounds: { halfX: TRENCH.halfX, halfZ: TRENCH.halfZ + 0.5 },
+  // Walkable rectangle = inside the trench's walls (the player stops 1 unit short).
+  // `x` is where its middle is: the room's longer to the west of the zone's center
+  bounds: { halfX: TRENCH.halfX, halfZ: TRENCH.halfZ + 0.5, x: TRENCH.midX },
   cameraMargin: 0.8,
   // Its music, with room tone around it: clanking weights, a treadmill (audio.js)
   sound: 'gym',
   portalSpots: {
-    'K-Town': { x: -82, z: 0 },                   // west door
-    Hawaii:   { x: 82, z: 0, y: FINISH.y },       // east door, at the end of the course
+    'K-Town': { x: TRENCH.west + 3, z: 0 },                  // west door
+    Hawaii:   { x: TRENCH.east - 3, z: 0, y: FINISH.y },     // east door, at the end of the course
   },
   // The "press E" sign (text in messages.js): on the last deck, facing the way you come in
   signSpot: { x: 74.5, z: -4, y: FINISH.y, face: { x: 0, z: -4 } },
@@ -54,6 +58,9 @@ export const GYM = {
   npcHeight: 2.2,
   // Up on the rims, each throwing one thing. In section order, and alternating sides
   npcSpots: [
+    { npc: 'perri',    x: -68, side: 1,  throws: 'dumbbell' },
+    { npc: 'hamster',  x: -62, side: -1, throws: 'ball' },
+    { npc: 'chungus',  x: -56, side: 1,  throws: 'dumbbell' },
     { npc: 'doge',     x: -50, side: -1, throws: 'ball' },
     { npc: 'perri',    x: -44, side: 1,  throws: 'dumbbell' },
     { npc: 'eggplant', x: -38, side: -1, throws: 'ball' },
@@ -412,7 +419,7 @@ function buildGym(zone, addObstacle) {
   /* The pit's floor: bumper mats, down the whole trench */
   const foam = padTexture('#4c7fc2', '#2f5a96');
   foam.repeat.set(W / 4, TW / 2);
-  room.add(flat(W, TW * 2, new THREE.MeshStandardMaterial({ map: foam, roughness: 0.95 }), 0, 0, 0));
+  room.add(flat(W, TW * 2, new THREE.MeshStandardMaterial({ map: foam, roughness: 0.95 }), TRENCH.midX, 0, 0));
 
   /* The rims: two long blocks with the trench between them, padded on the trench side */
   const rubber = rubberTexture();
@@ -435,17 +442,15 @@ function buildGym(zone, addObstacle) {
   /* Walls and ceiling. They don't cast shadows, so the sun still lights
      the room like a big skylight. */
   const paint = new THREE.MeshStandardMaterial({ map: wallTexture(), roughness: 0.9 });
-  for (const s of [-1, 1]) {
-    room.add(box(W + 0.8, CEILING, 0.4, paint, 0, CEILING / 2, s * (HALL_HALF_Z + 0.2), false));
-    room.add(box(0.4, CEILING, D, paint, s * (TRENCH.halfX + 0.2), CEILING / 2, 0, false));
-  }
-  room.add(box(W + 0.8, 0.3, D + 0.8, new THREE.MeshBasicMaterial({ color: '#4a4c52' }), 0, CEILING + 0.15, 0, false));
-  for (let x = -76; x <= 76; x += 19) {
+  for (const s of [-1, 1]) room.add(box(W + 0.8, CEILING, 0.4, paint, TRENCH.midX, CEILING / 2, s * (HALL_HALF_Z + 0.2), false));
+  for (const x of [TRENCH.west - 0.2, TRENCH.east + 0.2]) room.add(box(0.4, CEILING, D, paint, x, CEILING / 2, 0, false));
+  room.add(box(W + 0.8, 0.3, D + 0.8, new THREE.MeshBasicMaterial({ color: '#4a4c52' }), TRENCH.midX, CEILING + 0.15, 0, false));
+  for (let x = -95; x <= 76; x += 19) {
     for (const z of [-10, 0, 10]) room.add(box(7, 0.05, 2.4, glow('#fffaf0', 2.2), x, CEILING - 0.03, z, false));
     room.add(lightPool('#fff0dc', 8, x, 0, 0.14)); // each row lights the pit below it
   }
   for (const z of [-12, 12]) {                                                    // exposed ducts
-    const duct = cyl(0.45, W, mat('#b9bec4', { metalness: 0.6, roughness: 0.4 }), 0, CEILING - 0.7, z, 16);
+    const duct = cyl(0.45, W, mat('#b9bec4', { metalness: 0.6, roughness: 0.4 }), TRENCH.midX, CEILING - 0.7, z, 16);
     duct.rotation.z = Math.PI / 2;
     duct.castShadow = false;
     room.add(duct);
@@ -463,8 +468,8 @@ function buildGym(zone, addObstacle) {
     d.rotation.y = rotY;
     room.add(d);
   };
-  addDoor(-TRENCH.halfX + 0.05, 0, Math.PI / 2);          // to K-Town
-  addDoor(TRENCH.halfX - 0.05, FINISH.y, -Math.PI / 2);   // to Hawaii
+  addDoor(TRENCH.west + 0.05, 0, Math.PI / 2);          // to K-Town
+  addDoor(TRENCH.east - 0.05, FINISH.y, -Math.PI / 2);  // to Hawaii
 
   /* Neon signs, casting a glow on the wall around them, with the odd flicker */
   const sign = (text, color, w, x, z, rotY, y) => {
@@ -486,8 +491,8 @@ function buildGym(zone, addObstacle) {
     room.add(g);
   };
   // Both at the far end of the trench, in sight the whole way along
-  sign('♥ I LOVE SARAH ♥', ACCENT, 14, TRENCH.halfX - 0.03, 0, -Math.PI / 2, FINISH.y + 10);
-  sign('YOU ARE SO BEAUTIFUL', '#ff4fa3', 7.6, TRENCH.halfX - 0.03, 0, -Math.PI / 2, FINISH.y + 6.95); // up above the Hawaii portal's name
+  sign('♥ I LOVE SARAH ♥', ACCENT, 14, TRENCH.east - 0.03, 0, -Math.PI / 2, FINISH.y + 10);
+  sign('YOU ARE SO BEAUTIFUL', '#ff4fa3', 7.6, TRENCH.east - 0.03, 0, -Math.PI / 2, FINISH.y + 6.95); // up above the Hawaii portal's name
 
   /* The gym goes on up on the rims, behind the characters */
   const mirrorTex = canvasTexture(256, 64, (ctx, w, h) => {
@@ -502,14 +507,14 @@ function buildGym(zone, addObstacle) {
     for (let x = 0; x <= w; x += 32) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
   });
   const mirrorMat = new THREE.MeshStandardMaterial({ map: mirrorTex, roughness: 0.1, metalness: 0.2 });
-  for (const x of [-52, 4, 22]) {
+  for (const x of [-72, -52, 4, 22]) {
     const mirror = new THREE.Mesh(new THREE.PlaneGeometry(14, 3.2), mirrorMat);
     mirror.position.set(x, rimAt(x) + 1.9, -HALL_HALF_Z + 0.02);
     room.add(mirror);
     onRim(makeDumbbellRack(10), x, -HALL_HALF_Z + 1.2, Math.PI / 2);
   }
-  for (const x of [-58, -52, -46, -2, 4, 10, 16, 22, 28]) onRim(makeBench(false), x, -12, Math.PI / 2);
-  for (const [i, x] of [-38, -28, -8, 6].entries()) onRim(makePowerRack(PLATE_COLORS[i]), x, 12.5, Math.PI);
+  for (const x of [-78, -72, -66, -58, -52, -46, -2, 4, 10, 16, 22, 28]) onRim(makeBench(false), x, -12, Math.PI / 2);
+  for (const [i, x] of [-70, -62, -38, -28, -8, 6].entries()) onRim(makePowerRack(PLATE_COLORS[i % PLATE_COLORS.length]), x, 12.5, Math.PI);
   for (const x of [-48, 12, 20]) onRim(makeBench(true, PLATE_COLORS[(x + 48) % 4]), x, 12.5, Math.PI / 2);
 
   // The cardio row, along the south wall, facing its TVs
@@ -544,7 +549,7 @@ function buildGym(zone, addObstacle) {
 
   // Lockers and a water cooler by the K-Town end
   const lockerTex = lockerTexture();
-  for (const x of [-78, -72, -66]) {
+  for (const x of [-98, -92, -86]) {
     const len = 5.6;
     const t = lockerTex.clone();
     t.repeat.set(len / 0.6, 1);
@@ -556,7 +561,7 @@ function buildGym(zone, addObstacle) {
     g.add(lockers);
     onRim(g, x, HALL_HALF_Z - 0.3, Math.PI / 2);
   }
-  onRim(makeWaterCooler(), -60, 14);
+  onRim(makeWaterCooler(), -80, 14);
 
   /* Stretching corner down in the pit: a few exercise balls */
   for (const [x, z, c] of [[14, 2.5, '#3b82f6'], [-2, -3, '#ec4899'], [38, 3, '#22c55e']]) {
@@ -723,7 +728,7 @@ function updateGym(dt, movers, obstacles, play, throwers) {
   const section = Math.min(progress.reached, THROW_EVERY.length - 1);
   const falls = progress.falls[progress.reached];
   const every = progress.cleared || falls >= STOP_AFTER ? null : THROW_EVERY[section] * (falls >= EASE_AFTER ? EASED : 1);
-  throwing?.update(dt, play, throwers, every);
+  throwing?.update(dt, play, throwers, every, THROW_PACE[section]);
   if (progress.cleared) { // they're happy for you
     for (const t of throwers) {
       if (t.state === 'cheer') continue;
@@ -812,7 +817,7 @@ function updateBalls(dt, movers, obstacles) {
     // 5. Rebound off the walls
     const hx = b.zone.x, hz = b.zone.z;
     const mz = TRENCH.halfZ - BALL_R - 0.2;
-    const west = hx + PIT_WEST + BALL_R + 0.2, east = hx + TRENCH.halfX - BALL_R - 0.2;
+    const west = hx + PIT_WEST + BALL_R + 0.2, east = hx + TRENCH.east - BALL_R - 0.2;
     if (p.x < west || p.x > east) { p.x = Math.max(west, Math.min(east, p.x)); b.vx *= -BALL_WALL_BOUNCE; }
     if (Math.abs(p.z - hz) > mz) { p.z = hz + Math.sign(p.z - hz) * mz; b.vz *= -BALL_WALL_BOUNCE; }
 

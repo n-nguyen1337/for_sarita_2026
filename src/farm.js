@@ -36,6 +36,21 @@ const MAZE = cornMaze({ x: 24.5, z: GATE.z }); // starts just past the fence, it
 const HOUSE = { x: 0, z: -13, scale: 1.5 }; // 1.5× so the door fits the player
 // The house walls in the model's own units (the roof and porch overhang them)
 const HOUSE_WALLS = { minX: -3.45, maxX: 3.45, minZ: -2.6, maxZ: 2.4 };
+// The porch, also in the model's units: the boards you stand on, and the step up to them
+const PORCH = { minX: -1.6, maxX: 1.6, minZ: 2.33, maxZ: 3.73, top: 0.19 };
+const STEP_SQUASH = 0.5; // the step comes out half as tall, halfway up to the boards
+const PORCH_STEP = { minX: -0.85, maxX: 0.85, minZ: 3.73, maxZ: 4.23, top: 0.16 * STEP_SQUASH };
+const PORCH_POSTS = [-1.445, 1.445]; // the two at the corners that hold up its roof, x at z 3.615
+// Model pieces in the way at the front door, as [min, max] boxes in its units. The model
+// tucks its step under the porch boards, by the wall, so that gets moved out to the front
+const DOORWAY = {
+  step: [[-0.86, -0.01, 2.37], [0.86, 0.17, 2.89]],
+  clutter: [
+    [[0.42, 0.17, 3.55], [0.55, 2.6, 3.68]],    // the two middle porch posts, right in front of the door's edges
+    [[-0.55, 0.17, 3.55], [-0.42, 2.6, 3.68]],
+    [[-0.46, 0.18, 2.71], [0.46, 0.41, 2.79]],  // a black boot scraper, which looked like legs under the door
+  ],
+};
 const TILE = 4;                             // farm-lane tiles are 4×4
 const FIELD = { x: 11, z: 4, cols: 3, rows: 3 };  // crops, east of the yard
 const PATCH = { x: -9, z: 12, cols: 2, rows: 1 }; // pumpkin patch
@@ -72,8 +87,9 @@ export const FARM = {
     // In the clearing at the end of the corn maze, with no name above it
     Celebration: { ...MAZE.portal, label: false },
   },
-  // The "press E" sign (text in messages.js): beside the west path, facing it
-  signSpot: { x: -13, z: 5, face: { x: -13, z: 3 } },
+  // The "press E" sign (text in messages.js): in front of the house, beside the porch
+  // step and clear of its corner post, facing out into the yard
+  signSpot: { x: -2.7, z: -6.1, face: { x: -2.7, z: 3 } },
   // Farm animals by the crops and hay, pets around the porch
   petSpots: [
     { pet: 'cat',      x: 2,   z: -6  },
@@ -339,6 +355,48 @@ function stand(gltf, scale) {
   return g;
 }
 
+// How high the ground is at (x, z), local to the zone: the porch boards, its step, or 0
+function porchHeight(x, z) {
+  const on = (b) => {
+    const ux = (x - HOUSE.x) / HOUSE.scale, uz = (z - HOUSE.z) / HOUSE.scale;
+    return ux > b.minX && ux < b.maxX && uz > b.minZ && uz < b.maxZ;
+  };
+  return on(PORCH) ? PORCH.top * HOUSE.scale : on(PORCH_STEP) ? PORCH_STEP.top * HOUSE.scale : 0;
+}
+
+// Tidies up the model at its front door (see DOORWAY): drops what's in the way, and moves
+// the step out from under the porch to its front edge. `house` is fresh out of stand()
+function fixDoorway(house) {
+  house.updateMatrixWorld(true);
+  const toHouse = house.matrixWorld.clone().invert();
+  const inBox = ([min, max], p) => p.x >= min[0] && p.x <= max[0] && p.y >= min[1] && p.y <= max[1] && p.z >= min[2] && p.z <= max[2];
+  house.traverse((o) => {
+    if (!o.isMesh) return;
+    const geo = o.geometry, pos = geo.attributes.position;
+    const toModel = new THREE.Matrix4().multiplyMatrices(toHouse, o.matrixWorld), back = toModel.clone().invert();
+    const at = Array.from({ length: pos.count }, (_, i) => new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(toModel));
+    const index = geo.index ? Array.from(geo.index.array) : at.map((_, i) => i);
+    const keep = [], step = new Set();
+    for (let t = 0; t < index.length; t += 3) {
+      const tri = index.slice(t, t + 3), inside = (b) => tri.every((i) => inBox(b, at[i]));
+      if (DOORWAY.clutter.some(inside)) continue;
+      if (inside(DOORWAY.step)) for (const i of tri) step.add(i);
+      keep.push(...tri);
+    }
+    if (keep.length === index.length && !step.size) return;
+    for (const i of step) {
+      const p = at[i];
+      p.set(p.x, p.y * STEP_SQUASH, p.z + (PORCH_STEP.minZ - DOORWAY.step[0][2] - 0.01)).applyMatrix4(back);
+      pos.setXYZ(i, p.x, p.y, p.z);
+    }
+    pos.needsUpdate = true;
+    geo.setIndex(keep);
+    geo.computeBoundingBox();
+    geo.computeBoundingSphere();
+    if (import.meta.env.DEV) console.log(`farmhouse doorway: dropped ${(index.length - keep.length) / 3} triangles, moved ${step.size} step vertices`);
+  });
+}
+
 // Resolves once the farm models are in place
 function buildFarm(zone, addObstacle) {
   const farm = new THREE.Group();
@@ -361,7 +419,8 @@ function buildFarm(zone, addObstacle) {
   const inGate = (x, z) => x > 22 && x < MAZE.x0 + 0.01 && Math.abs(z - GATE.z) < GATE_HALF;
   const annex = (x, z) => inGate(x, z) || MAZE.inside(x, z);
   zone.terrain = {
-    heightAt: () => 0,
+    // Flat, but up on the porch you (and the pets) stand on its boards
+    heightAt: (x, z) => porchHeight(x - zone.x, z - zone.z),
     walkable: (x, z) => {
       if (x > walls.minX && x < walls.maxX && z > walls.minZ && z < walls.maxZ) return false;
       const lx = x - zone.x, lz = z - zone.z;
@@ -409,9 +468,13 @@ function buildFarm(zone, addObstacle) {
     bale.rotation.y = a;
     prop(bale, x, z, 0.85);
   }
-  for (const [x, z, s] of [[-1.8, -8.2, 0.3], [1.9, -8.1, 0.25], [-2.4, -7.7, 0.18], [5.3, -6.3, 0.22]]) {
-    prop(makePumpkin(s), x, z, s);
+  for (const [x, z, s] of [[-1.8, -8.2, 0.3], [1.9, -8.1, 0.25], [-1.9, -7.6, 0.18], [5.3, -6.3, 0.22]]) {
+    const pumpkin = makePumpkin(s);
+    prop(pumpkin, x, z, s);
+    pumpkin.position.y = porchHeight(x, z); // the ones on the porch sit on its boards
   }
+  // The posts at the porch's front corners
+  for (const px of PORCH_POSTS) prop(new THREE.Object3D(), HOUSE.x + px * HOUSE.scale, HOUSE.z + 3.615 * HOUSE.scale, 0.1);
   // The patch: rows of pumpkins of every size along the furrows
   for (let i = 0; i < 14; i++) {
     const s = 0.28 + rand() * 0.3;
@@ -506,6 +569,7 @@ function buildFarm(zone, addObstacle) {
       }
 
       const house = stand(houseGltf, HOUSE.scale);
+      fixDoorway(house);
       house.position.set(HOUSE.x, 0, HOUSE.z);
       farm.add(house);
     })

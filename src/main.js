@@ -117,8 +117,9 @@ const ZONE_SPACING = 60;     // distance between zone centers
 const ZONES = [
   // Zone 1 is a city street: its own builder, a rectangular boundary, and hand-placed portals/pets
   { name: 'K-Town',   x: -ZONE_SPACING / 2, z: -ZONE_SPACING / 2, ground: 0x4a4a4f, portal: 0xff4fa3, ...KTOWN },
-  // Zone 2 is an indoor gym, built the same way: a hall too long for its spot in the grid
-  { name: 'Gym',      x:  ZONE_SPACING * 1.5, z: -ZONE_SPACING / 2, ground: 0x2a2b2f, portal: 0xff7a1a, ...GYM },
+  // Zone 2 is an indoor gym, built the same way: a hall too long for its spot in the grid.
+  // It's pushed 20 further east, as its long west end would otherwise reach back into K-Town
+  { name: 'Gym',      x:  ZONE_SPACING * 1.5 + 20, z: -ZONE_SPACING / 2, ground: 0x2a2b2f, portal: 0xff7a1a, ...GYM },
   // Zone 3 is Hawaii, a beach diorama with real (uneven) terrain
   { name: 'Hawaii',   x: -ZONE_SPACING / 2, z:  ZONE_SPACING / 2, ground: 0x2a9fa6, portal: 0xffcc4d, ...BEACH },
   // Zone 4 is a farm in the fall, with its own golden sky
@@ -129,6 +130,7 @@ const ZONES = [
 ];
 const PORTAL_DIST_FROM_CENTER = ZONE_RADIUS - 4; // where portals stand inside each zone
 const PORTAL_TRIGGER = 2.4;                      // walk this close to a portal to use it
+const PORTAL_SINK = 0.55;                        // a portal out in the water floats this far down in it, so its ring rises out of the water
 const SIGN_RANGE = 2.2;                          // stand this close to a sign to read it (E)
 const SIGN_CLOSE = 3.0;                          // walk this far away and its message closes
 const GREET_RANGE = 3.4;                         // characters hop and show a heart when you come this close...
@@ -136,17 +138,18 @@ const GREET_EVERY = 9;                           // ...about this often (s) each
 const WIPE_CLOSE = 0.45;                         // seconds for the heart to close over the screen at a portal...
 const WIPE_OPEN = 0.6;                           // ...and to open on the next zone
 
-/* Zone shape: a disc of ZONE_RADIUS, or a rectangle when the zone has `bounds` */
+/* Zone shape: a disc of ZONE_RADIUS, or a rectangle when the zone has `bounds`. A
+   rectangle's middle can be `bounds.x` along from the zone's center (the gym's is) */
 function insideZone(zone, x, z, margin) {
   const dx = x - zone.x, dz = z - zone.z;
-  if (zone.bounds) return Math.abs(dx) <= zone.bounds.halfX - margin && Math.abs(dz) <= zone.bounds.halfZ - margin;
+  if (zone.bounds) return Math.abs(dx - (zone.bounds.x ?? 0)) <= zone.bounds.halfX - margin && Math.abs(dz) <= zone.bounds.halfZ - margin;
   return Math.hypot(dx, dz) <= ZONE_RADIUS - margin;
 }
 function clampToZone(zone, pos, margin) {
   const dx = pos.x - zone.x, dz = pos.z - zone.z;
   if (zone.bounds) {
-    const hx = zone.bounds.halfX - margin, hz = zone.bounds.halfZ - margin;
-    pos.x = zone.x + Math.max(-hx, Math.min(hx, dx));
+    const hx = zone.bounds.halfX - margin, hz = zone.bounds.halfZ - margin, mid = zone.bounds.x ?? 0;
+    pos.x = zone.x + mid + Math.max(-hx, Math.min(hx, dx - mid));
     pos.z = zone.z + Math.max(-hz, Math.min(hz, dz));
     return;
   }
@@ -344,9 +347,14 @@ function makeTree() {
 
 // Custom zones (K-Town, Gym, Hawaii, Farm) build their own scenery and obstacles.
 // The beach returns a promise: once its terrain is baked, stand its portals and sign on the sand.
+// A portal out in the water floats instead, bobbing on it (see updatePortalLooks)
 for (const zone of ZONES) {
   zone.build?.(zone, addObstacle)?.then(() => {
-    for (const p of portals) if (p.from === zone) p.group.position.y = groundAt(zone, p.x, p.z);
+    for (const p of portals) {
+      if (p.from !== zone) continue;
+      p.afloat = waterAt(zone, p.x, p.z) !== null;
+      p.group.position.y = p.afloat ? waterAt(zone, p.x, p.z) - PORTAL_SINK : groundAt(zone, p.x, p.z);
+    }
     for (const s of signs) if (s.zone === zone) s.group.position.y = groundAt(zone, s.x, s.z);
   });
 }
@@ -809,6 +817,7 @@ function updatePortalLooks(dt) {
     const faceX = p.face.x - p.x, faceZ = p.face.z - p.z;
     const behind = (toCamX * faceX + toCamZ * faceZ) / (Math.hypot(faceX, faceZ) || 1) < 1.5 && Math.hypot(toCamX, toCamZ) < 14;
     p.fade += ((behind ? 0 : 1) - p.fade) * Math.min(1, dt * 6);
+    if (p.afloat) p.group.position.y = waterAt(currentZone, p.x, p.z) - PORTAL_SINK;
     p.update(timer.getElapsed(), p.fade);
   }
 }
@@ -834,6 +843,17 @@ for (const [i, from] of ZONES.entries()) {
   }
 }
 
+// DEBUG (remove later): a row of portals to every other zone on K-Town's north sidewalk,
+// on your left as you spawn. Set to false, or delete this block, to take them out.
+const DEBUG_PORTALS = true;
+if (DEBUG_PORTALS) {
+  const home = ZONES[0];
+  ZONES.slice(1).forEach((to, i) => {
+    const x = home.x - 21 + i * 4.2, z = home.z - 6.2;
+    addPortal(x, z, home, to, { x, z: home.z }); // facing the street
+  });
+}
+
 function teleportTo(toZone) {
   // Arrive just in front of the destination's portal back to where we came from,
   // far enough past it (3 units) that we're outside its 2-unit trigger.
@@ -842,8 +862,8 @@ function teleportTo(toZone) {
   const dx = back.face.x - back.x, dz = back.face.z - back.z;
   const len = Math.hypot(dx, dz) || 1;
   const x = back.x + (dx / len) * 3, z = back.z + (dz / len) * 3;
-  // Standing where the portal stands, which might be up on a course
-  player.position.set(x, toZone.course ? back.group.position.y : groundAt(toZone, x, z), z);
+  // Standing where the portal stands, which might be up on a course, or afloat if it's out in the water
+  player.position.set(x, toZone.course ? back.group.position.y : standHeight(toZone, x, Infinity, z), z);
   landingShadow.visible = false;
   knock.set(0, 0, 0);
   hurt = 0;

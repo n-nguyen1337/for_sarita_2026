@@ -13,17 +13,17 @@ import { slabTexture, flat } from './kit.js';
 /*   S  a scarecrow   o  a few pumpkins   H  a hay bale with balloons  */
 /* ------------------------------------------------------------------ */
 const MAP = [
-  '#################',
-  '#S#         #####',
-  '# # # # ### #####',
-  '# # # #   #o#o H#',
-  '# # # ### ###   #',
-  '    #  o# #    P#',
-  '### ##### # #   #',
-  '#   #   #   #o H#',
-  '# ### # # #######',
-  '#     #    S#####',
-  '#################',
+  '#######################',
+  '#S         o#     #####',
+  '##### # ##### ### #####',
+  '#   # #     #  o# #o H#',
+  '# # # ### # # ### #   #',
+  '  #     # #   #      P#',
+  '####### # ##### # #   #',
+  '#       #  o#   # #o H#',
+  '# ########### ### #####',
+  '#             #S  #####',
+  '#######################',
 ];
 const PATH = 2.6;          // width of a path
 const ROW = 1.0;           // thickness of a row of corn between two paths
@@ -31,6 +31,8 @@ const PERIOD = PATH + ROW;
 const PAD = 0.45;          // keeps you about a body radius off the corn
 const CORN_HEIGHT = 2.4;   // a head taller than you
 const MARGIN = 2;          // extra corn round the north, east and south edges (scenery only)
+const SPACING = 0.32;      // between stalks: about three across each row of corn
+const LEAVES = 6;          // on each stalk
 // In the maze the camera climbs and closes in, so you can see over the corn
 const VIEW = { distance: 6.2, height: 6.4 };
 const TINTS = ['#ffffff', '#fff1d0', '#f0f5d0', '#ffe8c0', '#e8eccc'];
@@ -87,16 +89,16 @@ function stalkGeometry() {
     return geo;
   };
   const parts = [paint(new THREE.CylinderGeometry(0.025, 0.04, CORN_HEIGHT, 5, 1, true).translate(0, CORN_HEIGHT / 2, 0), '#8f8a45')];
-  for (let i = 0; i < 4; i++) {
-    const len = 0.8 - i * 0.08;
-    const leaf = new THREE.PlaneGeometry(0.09, len, 1, 4).translate(0, len / 2, 0);
+  for (let i = 0; i < LEAVES; i++) {
+    const len = 0.9 - i * 0.06;
+    const leaf = new THREE.PlaneGeometry(0.13, len, 1, 4).translate(0, len / 2, 0);
     const p = leaf.attributes.position;
     for (let k = 0; k < p.count; k++) { // arch out from the stalk, then droop
       const t = p.getY(k) / len;
       p.setXYZ(k, len * 0.8 * t, len * (0.6 * t - 0.45 * t * t), p.getX(k));
     }
     leaf.computeVertexNormals();
-    parts.push(paint(leaf.rotateY(i * 2.4).translate(0, 0.5 + i * 0.38, 0), '#a7a04a'));
+    parts.push(paint(leaf.rotateY(i * 2.4).translate(0, 0.35 + i * 0.3, 0), '#a7a04a'));
   }
   parts.push(paint(new THREE.ConeGeometry(0.07, 0.35, 5).translate(0, CORN_HEIGHT + 0.12, 0), '#d6b55c'));
   parts.push(paint(new THREE.SphereGeometry(0.055, 5, 3).scale(1, 2.6, 1).rotateZ(0.35).translate(0.06, CORN_HEIGHT * 0.5, 0), '#c8b56b'));
@@ -111,11 +113,10 @@ function buildMaze(farm, rand, x0, z0, width, depth, corn) {
 
   // Stalks on a jittered grid wherever the map has corn, and all round the
   // outside except the west edge, where you come in
-  const STEP = 0.5;
   const spots = [];
-  for (let x = x0 + STEP / 2; x < x0 + width + MARGIN; x += STEP) {
-    for (let z = z0 - MARGIN + STEP / 2; z < z0 + depth + MARGIN; z += STEP) {
-      const px = x + (rand() - 0.5) * 0.3, pz = z + (rand() - 0.5) * 0.3;
+  for (let x = x0 + SPACING / 2; x < x0 + width + MARGIN; x += SPACING) {
+    for (let z = z0 - MARGIN + SPACING / 2; z < z0 + depth + MARGIN; z += SPACING) {
+      const px = x + (rand() - 0.5) * SPACING * 0.6, pz = z + (rand() - 0.5) * SPACING * 0.6;
       const outside = px > x0 + width || pz < z0 || pz > z0 + depth;
       if (outside || corn(px, pz)) spots.push([px, pz]);
     }

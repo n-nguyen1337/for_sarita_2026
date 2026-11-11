@@ -81,7 +81,7 @@ South of the beach, the island's cove opens into a lagoon, a circle of sea marke
 
 ### The corn maze
 
-The maze is an ASCII map at the top of [src/cornmaze.js](src/cornmaze.js). `#` is corn and anything else is path. Odd rows and columns are paths (2.6 units wide), and even ones are the thin rows of corn between them (1 unit). Letters on the paths place things: `P` the portal, `S` a scarecrow, `o` a pile of pumpkins, `H` a hay bale with balloons. Edit the map to reshape the maze. Keep the way in on the west edge (column 0), because the maze lines that row up with the gate in the fence. Inside the maze the camera rises and closes in so you can see over the corn.
+The maze is an ASCII map at the top of [src/cornmaze.js](src/cornmaze.js). `#` is corn and anything else is path. Odd rows and columns are paths (2.6 units wide), and even ones are the thin rows of corn between them (1 unit). Letters on the paths place things: `P` the portal, `S` a scarecrow, `o` a pile of pumpkins, `H` a hay bale with balloons. Edit the map to reshape the maze. Keep the way in on the west edge (column 0), because the maze lines that row up with the gate in the fence. How thick the corn grows is set by `SPACING` (the distance between stalks) and `LEAVES` (leaves on each stalk), just below the map. Inside the maze the camera rises and closes in so you can see over the corn.
 
 ## Code layout
 
@@ -95,7 +95,7 @@ src/sky.js          gradient sky dome, clouds and far-off hills
 src/portal.js       the portal: ring, swirl, sparkles and name
 src/fx.js           little effects: hearts over characters, puffs of dust, splashes and ripples on the water
 src/grass.js        swaying grass tufts
-src/character.js    the player character, built from primitives, with eased walk/jump/idle/cheer animation
+src/character.js    the player character, built in code (hair swept along curves, a painted face that blinks and beams when she cheers), with eased walk/jump/idle/cheer/swim animation
 src/sign.js         the wooden signpost mesh
 src/messages.js     the text each zone's sign shows (placeholders for now)
 src/kit.js          shared helpers: model loading, canvas textures, cached materials, box/cyl/flat mesh makers
@@ -122,7 +122,7 @@ Run the tools with `node tools/inspect-glb.mjs path/to/file.glb`. If you change 
 
 Each entry in `ZONES` (in [src/main.js](src/main.js)) has a `name`, center `x`/`z`, a `ground` color and a `portal` color. A custom zone spreads in an object from its own module, which can provide:
 
-- `build(zone, addObstacle)`: adds the scenery to `zone.group`. It may return a promise; the beach does this so its portals can be lifted onto the sand once the terrain has baked.
+- `build(zone, addObstacle)`: adds the scenery to `zone.group`. It may return a promise; the beach does this so its portals can be lifted onto the sand once the terrain has baked. A portal whose spot is in water floats there instead, bobbing with it (`PORTAL_SINK` in [src/main.js](src/main.js) is how far down it sits), and you come out of it swimming. Hawaii's Farm portal is out in the lagoon, so you swim to it.
 - `bounds: { halfX, halfZ }`: a rectangular walkable area. Without it, the zone is a disc of `ZONE_RADIUS`.
 - `portalSpots: { [zoneName]: { x, z, face?, label? } }`: hand-placed portals, in coordinates local to the zone center. `label: false` leaves off the name that floats above a portal, as on the farm's portal at the end of the corn maze.
 - `spawn: { x, z, face: { x, z } }` (the first zone only): where the game starts and the point the character looks at, with the camera right behind.
@@ -178,7 +178,7 @@ The CONFIG block at the top of [src/main.js](src/main.js) controls how the game 
 | How low you float in the water | `SWIM_FLOAT` |
 | The lagoon's size and where it is, the raft, the floaties, the turtles and the fish | the top of [src/lagoon.js](src/lagoon.js) |
 
-The title screen's words are in [index.html](index.html). The character's colors (skin, hair, dress, shoes, bow) are constants at the top of [src/character.js](src/character.js).
+The title screen's words are in [index.html](index.html). The character's colors (skin, hair and its shine, dress, white trim, shoes, bow, eyes) are constants at the top of [src/character.js](src/character.js). Her face is drawn by `drawFace` in the same file, once for each look: eyes open, half shut and shut for blinking, and happy for cheering.
 
 The graphics quality tiers, and how slow the game has to get before it steps down one, are at the top of [src/look.js](src/look.js).
 

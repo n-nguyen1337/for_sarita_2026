@@ -48,7 +48,8 @@ console.log(`A jump rises ${peak.toFixed(2)} and carries ${reach(0).toFixed(2)} 
 console.log(' #   gap  rise  reach  share');
 const moments = Array.from({ length: SAMPLES }, (_, s) => (s / SAMPLES) * CYCLE);
 const inPlace = (p, i) => {
-  if (Math.abs(p.x) + (p.w ?? p.r * 2) / 2 > TRENCH.halfX || Math.abs(p.z) + (p.d ?? p.r * 2) / 2 > TRENCH.halfZ) return `${i} sticks out of the trench`;
+  const halfW = (p.w ?? p.r * 2) / 2;
+  if (p.x - halfW < TRENCH.west || p.x + halfW > TRENCH.east ||Math.abs(p.z) + (p.d ?? p.r * 2) / 2 > TRENCH.halfZ) return `${i} sticks out of the trench`;
   if (rimAt(p.x) - p.y < RIM_CLEARANCE) return `${i} is only ${(rimAt(p.x) - p.y).toFixed(1)} below the rim`;
   if (p.y + CAMERA_ROOM > CEILING) return `${i} leaves no room for the camera under the ceiling`;
   if (p.x > PIT_WEST && p.y < PIT_TOP) return `${i} is so low that standing on it counts as falling into the pit`;

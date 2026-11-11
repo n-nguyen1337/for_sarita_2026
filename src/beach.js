@@ -41,16 +41,16 @@ export const BEACH = {
   dust: '#fff6e0',
   // Its music (audio.js)
   sound: 'cozy',
-  // Portals stand on open sand, facing along the beach; they're lifted onto
-  // the sand once the terrain has loaded. (Load with ?terrain to print a map.)
+  // Portals stand on the sand, or float in the water, once the terrain has loaded.
+  // (Load with ?terrain to print a map: the lagoon is the `~`.)
   portalSpots: {
-    Gym:      { x: -15.5, z: 2.5, face: { x: 0, z: 2.5 } }, // the west end of the beach, where you come in
-    Farm:     { x: 14.5,  z: 2.5, face: { x: 0, z: 2.5 } }, // the east end, straight along the sand
+    Gym:      { x: -15.5, z: 2.5, face: { x: 0, z: 2.5 } }, // the west end of the beach, where you come in, facing along it
+    Farm:     { x: 12,    z: 11.5, face: { x: 0, z: 2.5 } }, // out in the lagoon, off the east end, facing back at the beach: you swim to it
   },
   // The "press E" sign (text in messages.js): halfway between them, facing the way you come in
   signSpot: { x: -0.5, z: 2.5, face: { x: -15.5, z: 2.5 } },
   // The beach characters hang out on the wide part of the sand, leaving the
-  // narrow strip along the water (the way to the Farm portal) mostly clear
+  // narrow strip along the water (the way out to the Farm portal) mostly clear
   npcSpots: [
     { npc: 'squid',  x: -17, z: -2  },
     { npc: 'squid',  x: -4,  z: 6   },

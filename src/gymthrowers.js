@@ -55,6 +55,8 @@ export function makeThrowing(zone) {
 
   let wait = 1.2;  // until the next throw
   let turn = 0;    // takes the characters in turn
+  let pace = 1;    // how fast things fly here, as a multiple of their usual speed (see update)
+  const flightOf = (item) => THROW[item.kind].flight / pace;
 
   const free = (item) => {
     item.state = 'free';
@@ -71,7 +73,7 @@ export function makeThrowing(zone) {
   }
 
   function aim(item, play, out) {
-    const ahead = THROW[item.kind].flight * LEAD;
+    const ahead = flightOf(item) * LEAD;
     out.x = play.pos.x + (play.vel.x + play.ride.x) * ahead;
     out.y = play.pos.y;
     out.z = Math.max(zone.z - TRENCH.halfZ + 0.6, Math.min(zone.z + TRENCH.halfZ - 0.6, play.pos.z + (play.vel.z + play.ride.z) * ahead));
@@ -92,12 +94,12 @@ export function makeThrowing(zone) {
   }
 
   function release(item, play) {
-    const spec = THROW[item.kind], p = item.mesh.position;
+    const spec = THROW[item.kind], p = item.mesh.position, flight = flightOf(item);
     aim(item, play, target);
     const ty = COURSE.surfaceBelow(target.x - zone.x, target.y + 0.4, target.z - zone.z) + spec.r + 0.8; // about waist height
-    item.vx = (target.x - p.x) / spec.flight;
-    item.vz = (target.z - p.z) / spec.flight;
-    item.vy = (ty - p.y) / spec.flight + 0.5 * GRAVITY * spec.flight;
+    item.vx = (target.x - p.x) / flight;
+    item.vz = (target.z - p.z) / flight;
+    item.vy = (ty - p.y) / flight + 0.5 * GRAVITY * flight;
     item.spinX = (Math.random() - 0.5) * 12;
     item.spinZ = 5 + Math.random() * 7;
     item.state = 'flying';
@@ -188,8 +190,10 @@ export function makeThrowing(zone) {
   }
 
   return {
-    // `every` is the seconds between throws, or null if nobody's throwing now
-    update(dt, play, throwers, every) {
+    // `every` is the seconds between throws, or null if nobody's throwing now, and
+    // `speed` how fast they fly: 2 is there in half their usual time (THROW's `flight`)
+    update(dt, play, throwers, every, speed = 1) {
+      pace = speed;
       wait -= dt;
       const busy = items.filter((i) => i.state === 'held' || (i.state === 'flying' && !i.landed)).length;
       if (every && !play.safe && wait <= 0 && busy < IN_AIR) {
