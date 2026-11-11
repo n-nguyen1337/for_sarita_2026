@@ -84,8 +84,8 @@ export const FARM = {
   sound: 'harvest',
   portalSpots: {
     Hawaii: { x: -19, z: 3, face: { x: 0, z: 3 } }, // at the end of the west path
-    // In the clearing at the end of the corn maze, with no name above it
-    Celebration: { ...MAZE.portal, label: false },
+    // In the clearing at the end of the corn maze
+    Celebration: MAZE.portal,
   },
   // The "press E" sign (text in messages.js): in front of the house, beside the porch
   // step and clear of its corner post, facing out into the yard

@@ -1,43 +1,18 @@
 import * as THREE from 'three';
-import { DISPLAY_FONT, fontTexture, heartShape, lightPool, softDisc } from './kit.js';
+import { lightPool, softDisc } from './kit.js';
 
 /* ------------------------------------------------------------------ */
-/* A PORTAL: a glowing ring with a heart on top, filled with a soft    */
+/* A PORTAL: a glowing ring, filled with a soft                        */
 /* swirl of color, with sparkles drifting up through it.               */
 /* Built at the origin, facing +Z; main.js places it.                  */
 /* ------------------------------------------------------------------ */
 const RING_R = 1.5;
 const RING_Y = 1.9;   // height of the ring's center
-const LABEL_Y = RING_Y + RING_R + 2; // height of the zone name floating above it
 const SPARKLES = 26;
 
 const RING_GEO = new THREE.TorusGeometry(RING_R, 0.15, 16, 56);
 const TRIM_GEO = new THREE.TorusGeometry(RING_R - 0.17, 0.028, 8, 56);
 const DISC_GEO = new THREE.CircleGeometry(RING_R - 0.12, 48);
-const HEART_GEO = (() => {
-  const g = new THREE.ExtrudeGeometry(heartShape(0.6), { depth: 0.1, bevelEnabled: true, bevelThickness: 0.04, bevelSize: 0.04, bevelSegments: 3, curveSegments: 14 });
-  g.translate(0, 0, -0.05);
-  return g;
-})();
-
-// The next zone's name, on a pill in the portal's color
-function labelTexture(text, color) {
-  return fontTexture(512, 128, (ctx, w, h) => {
-    ctx.font = `600 66px ${DISPLAY_FONT}`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    const pill = Math.min(w - 8, ctx.measureText(text).width + 84);
-    ctx.beginPath();
-    ctx.roundRect((w - pill) / 2, 10, pill, h - 20, (h - 20) / 2);
-    ctx.fillStyle = color;
-    ctx.fill();
-    ctx.lineWidth = 6;
-    ctx.strokeStyle = '#ffffff';
-    ctx.stroke();
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(text, w / 2, h / 2 + 3, pill - 40);
-  });
-}
 
 /* A soft bubble: the portal's color at the rim, melting into a pale hint of the
    next zone's sky in the middle (which you can half see through), with three
@@ -78,7 +53,7 @@ function discMaterial(portal, sky) {
   });
 }
 
-export function makePortal(to, showLabel) {
+export function makePortal(to) {
   const group = new THREE.Group();
   const ring = new THREE.Mesh(RING_GEO, new THREE.MeshStandardMaterial({
     color: to.portal, emissive: to.portal, emissiveIntensity: 0.9, metalness: 0.2, roughness: 0.35, transparent: true,
@@ -88,18 +63,9 @@ export function makePortal(to, showLabel) {
   trim.position.y = RING_Y;
   const disc = new THREE.Mesh(DISC_GEO, discMaterial(to.portal, to.sky ?? '#9fd8ff'));
   disc.position.y = RING_Y;
-  const heart = new THREE.Mesh(HEART_GEO, ring.material);
-  heart.position.y = RING_Y + RING_R + 0.05;
   const pool = lightPool(to.portal, 3.2, 0, 0, 0.5);
-  group.add(ring, trim, disc, heart, pool);
+  group.add(ring, trim, disc, pool);
 
-  let label = null;
-  if (showLabel) {
-    label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTexture(to.name, `#${new THREE.Color(to.portal).getHexString()}`), transparent: true, fog: false, toneMapped: false, depthWrite: false }));
-    label.position.y = LABEL_Y;
-    label.scale.set(4, 1, 1);
-    group.add(label);
-  }
 
   // Sparkles drifting up through the ring
   const positions = new Float32Array(SPARKLES * 3), colors = new Float32Array(SPARKLES * 3);
@@ -121,14 +87,8 @@ export function makePortal(to, showLabel) {
     ring.material.opacity = fade;
     trim.material.opacity = fade;
     pool.material.opacity = 0.5 * fade;
-    if (label) {
-      label.material.opacity = fade;
-      label.position.y = LABEL_Y + Math.sin(time * 1.6) * 0.05;
-    }
     disc.material.uniforms.uFade.value = fade;
     disc.material.uniforms.uTime.value = time;
-    heart.rotation.y = Math.sin(time * 0.9) * 0.5;
-    heart.position.y = RING_Y + RING_R + 0.05 + Math.sin(time * 1.6) * 0.04;
     seeds.forEach((s, i) => {
       const t = (time * s.speed + s.phase) % 1; // 0 at the ground, 1 at the top
       positions[i * 3] = s.x + Math.sin(time + s.sway) * 0.12;

@@ -799,9 +799,8 @@ let teleportCooldown = 0; // short lockout so you don't bounce straight back
 const portals = [];
 
 // `face` is the world point the portal looks toward; you step out that way.
-// The name of the zone it leads to floats above it, unless `showLabel` is false.
-function addPortal(x, z, fromZone, toZone, face, showLabel = true, y = groundAt(fromZone, x, z)) {
-  const { group, update } = makePortal(toZone, showLabel);
+function addPortal(x, z, fromZone, toZone, face, y = groundAt(fromZone, x, z)) {
+  const { group, update } = makePortal(toZone);
   group.position.set(x, y, z);
   group.rotation.y = Math.atan2(face.x - x, face.z - z);
   fromZone.group.add(group);
@@ -830,7 +829,7 @@ for (const [i, from] of ZONES.entries()) {
     const spot = from.portalSpots?.[to.name];
     if (spot) { // hand-placed (custom zones); faces the zone center unless told otherwise
       const face = spot.face ?? { x: 0, z: 0 };
-      addPortal(from.x + spot.x, from.z + spot.z, from, to, { x: from.x + face.x, z: from.z + face.z }, spot.label !== false, spot.y);
+      addPortal(from.x + spot.x, from.z + spot.z, from, to, { x: from.x + face.x, z: from.z + face.z }, spot.y);
       continue;
     }
     const dx = to.x - from.x, dz = to.z - from.z;

@@ -92,7 +92,7 @@ src/ui.js           what drives it
 src/main.js         config, scene, zones, pets, player movement, camera, the finale, loop
 src/look.js         how the picture gets finished: tone mapping, glow, grade, quality tiers
 src/sky.js          gradient sky dome, clouds and far-off hills
-src/portal.js       the portal: ring, swirl, sparkles and name
+src/portal.js       the portal: ring, swirl and sparkles
 src/fx.js           little effects: hearts over characters, puffs of dust, splashes and ripples on the water
 src/grass.js        swaying grass tufts
 src/character.js    the player character, built in code (hair swept along curves, a painted face that blinks and beams when she cheers), with eased walk/jump/idle/cheer/swim animation
@@ -124,7 +124,7 @@ Each entry in `ZONES` (in [src/main.js](src/main.js)) has a `name`, center `x`/`
 
 - `build(zone, addObstacle)`: adds the scenery to `zone.group`. It may return a promise; the beach does this so its portals can be lifted onto the sand once the terrain has baked. A portal whose spot is in water floats there instead, bobbing with it (`PORTAL_SINK` in [src/main.js](src/main.js) is how far down it sits), and you come out of it swimming. Hawaii's Farm portal is out in the lagoon, so you swim to it.
 - `bounds: { halfX, halfZ }`: a rectangular walkable area. Without it, the zone is a disc of `ZONE_RADIUS`.
-- `portalSpots: { [zoneName]: { x, z, face?, label? } }`: hand-placed portals, in coordinates local to the zone center. `label: false` leaves off the name that floats above a portal, as on the farm's portal at the end of the corn maze.
+- `portalSpots: { [zoneName]: { x, z, face?, y? } }`: hand-placed portals, in coordinates local to the zone center.
 - `spawn: { x, z, face: { x, z } }` (the first zone only): where the game starts and the point the character looks at, with the camera right behind.
 - `petSpots: [{ pet, x, z }]`: hand-placed pets. A zone can have both `npcSpots` and `petSpots`.
 - `terrain` (set by `build`): `heightAt(x, z)` and `walkable(x, z)` for uneven ground and no-go areas. The farm uses this to keep you out of the farmhouse and on the maze paths. An optional `annex(x, z)` marks ground past the zone's disc (the farm's gate and maze, Hawaii's lagoon). There the player isn't clamped to the disc, and `walkable` alone keeps them in. Water you can swim in (the beach) adds `waterAt(x, z)` (its surface, or null where it's dry), `bedAt(x, z)` (the sea bed, `-Infinity` where there's none) and `swimmable(x, z)` (where only the player can go).

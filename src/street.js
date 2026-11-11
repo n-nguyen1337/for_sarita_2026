@@ -465,7 +465,7 @@ function addLanterns(street) {
     for (let i = 0; i <= 16; i++) {
       const t = i / 16, z = -EDGE + 2 * EDGE * t, y = TOP - SAG * 4 * t * (1 - t);
       pts.push(new THREE.Vector3(x, y, z));
-      const clearOfPortal = strand < LANTERN_STRANDS.length - 1 || Math.abs(z) > 2.5; // none right in front of the Gym portal's name
+      const clearOfPortal = strand < LANTERN_STRANDS.length - 1 || Math.abs(z) > 2.5; // none right in front of the Gym portal
       if (i > 0 && i < 16 && i % 2 === 0 && clearOfPortal) spots.push({ x, y, z, phase: i + strand * 2.3 });
     }
     street.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), wire));

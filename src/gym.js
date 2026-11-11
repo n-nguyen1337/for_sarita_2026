@@ -492,7 +492,7 @@ function buildGym(zone, addObstacle) {
   };
   // Both at the far end of the trench, in sight the whole way along
   sign('♥ I LOVE SARAH ♥', ACCENT, 14, TRENCH.east - 0.03, 0, -Math.PI / 2, FINISH.y + 10);
-  sign('YOU ARE SO AWESOME', '#ff4fa3', 7.6, TRENCH.east - 0.03, 0, -Math.PI / 2, FINISH.y + 6.95); // up above the Hawaii portal's name
+  sign('YOU ARE SO AWESOME', '#ff4fa3', 7.6, TRENCH.east - 0.03, 0, -Math.PI / 2, FINISH.y + 6.95); // up above the Hawaii portal
 
   /* The gym goes on up on the rims, behind the characters */
   const mirrorTex = canvasTexture(256, 64, (ctx, w, h) => {
