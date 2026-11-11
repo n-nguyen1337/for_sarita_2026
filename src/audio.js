@@ -1451,7 +1451,7 @@ export const SFX = {
    `volume` scales that one song against the others (1 = normal). */
 const BGM = {
   cutesy:  { url: new URL('../assets/bgm/zone1.mp3', import.meta.url).href, end: 125.6 },
-  gym:     { url: new URL('../assets/bgm/zone2.mp3', import.meta.url).href, start: 35, end: 210.9 },
+  gym:     { url: new URL('../assets/bgm/zone2.mp3', import.meta.url).href, start: 35, end: 210.9, volume: 0.75 },
   cozy:    { url: new URL('../assets/bgm/zone3.mp3', import.meta.url).href, end: 184 },
   harvest: { url: new URL('../assets/bgm/zone4.mp3', import.meta.url).href, end: 255.2 },
   party:   { url: new URL('../assets/bgm/zone5.mp3', import.meta.url).href, end: 264.3, volume: 0.7 },
