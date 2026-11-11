@@ -845,7 +845,7 @@ for (const [i, from] of ZONES.entries()) {
 
 // DEBUG (remove later): a row of portals to every other zone on K-Town's north sidewalk,
 // on your left as you spawn. Set to false, or delete this block, to take them out.
-const DEBUG_PORTALS = true;
+const DEBUG_PORTALS = false;
 if (DEBUG_PORTALS) {
   const home = ZONES[0];
   ZONES.slice(1).forEach((to, i) => {
