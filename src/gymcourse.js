@@ -27,7 +27,7 @@ export const HALL_HALF_Z = 16;                 // the room's outer walls, past t
 export const CEILING = 24;
 export const PIT_WEST = -22;                   // the pit starts here, past the flat floor
 export const PIT_TOP = 4;                      // nothing to stand on over the pit is lower than this, so below it you've fallen
-export const CYCLE = 6;                        // the seconds a moving platform takes to go there and back. They all share it, so they stay in step
+export const CYCLE = 5;                        // the seconds a moving platform takes to go there and back. They all share it, so they stay in step
 
 // The tops of the trench's walls, stepping up as the course does, so the
 // characters stand about level with you: [from x, to x, height]
