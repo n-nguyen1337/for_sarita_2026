@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { modelLoader } from './kit.js';
 import { skyDome, clouds } from './sky.js';
-import { LAGOON, LAGOON_EDGE, makeLagoon } from './lagoon.js';
+import { LAGOON, LAGOON_EDGE, RAFT, makeLagoon } from './lagoon.js';
 
 // "Miami Beach Diorama" by David Jávorcsík (https://sketchfab.com/Redlobo), CC-BY-4.0:
 // https://sketchfab.com/3d-models/miami-beach-diorama-020167590ea34247beeeea8d176e36ec
@@ -45,12 +45,12 @@ export const BEACH = {
   // (Load with ?terrain to print a map: the lagoon is the `~`.)
   portalSpots: {
     Gym:      { x: -15.5, z: 2.5, face: { x: 0, z: 2.5 } }, // the west end of the beach, where you come in, facing along it
-    Farm:     { x: 12,    z: 11.5, face: { x: 0, z: 2.5 } }, // out in the lagoon, off the east end, facing back at the beach: you swim to it
+    Farm:     { x: RAFT.x, z: RAFT.z, face: { x: RAFT.x, z: 0 } }, // on the raft, out in the deep water, facing back at the beach: you swim out to it
   },
   // The "press E" sign (text in messages.js): halfway between them, facing the way you come in
   signSpot: { x: -0.5, z: 2.5, face: { x: -15.5, z: 2.5 } },
   // The beach characters hang out on the wide part of the sand, leaving the
-  // narrow strip along the water (the way out to the Farm portal) mostly clear
+  // narrow strip along the water (the way out to the lagoon) mostly clear
   npcSpots: [
     { npc: 'squid',  x: -17, z: -2  },
     { npc: 'squid',  x: -4,  z: 6   },

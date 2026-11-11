@@ -15,7 +15,7 @@ import { sfx } from './audio.js';
 export const LAGOON = { x: 3, z: 16, r: 16 };
 export const LAGOON_EDGE = 0.8;
 
-const RAFT = { x: 3, z: 25, r: 1.7, freeboard: 0.25 }; // its deck stands this far out of the water
+export const RAFT = { x: 3, z: 25, r: 1.7, freeboard: 0.25 }; // its deck stands this far out of the water
 const STEP_UP = 0.3;       // main.js's STEP_UP: the raft only stops a swimmer this far below its deck
 const FOOT = 0.25;         // you can stand this far past the deck's edge
 const BUOY_GAP = 1.5;      // between the buoys along the line

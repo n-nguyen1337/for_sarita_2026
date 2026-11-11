@@ -347,13 +347,13 @@ function makeTree() {
 
 // Custom zones (K-Town, Gym, Hawaii, Farm) build their own scenery and obstacles.
 // The beach returns a promise: once its terrain is baked, stand its portals and sign on the sand.
-// A portal out in the water floats instead, bobbing on it (see updatePortalLooks)
+// A portal out in the water stands on the deck there (the raft), or floats, bobbing with it (see updatePortalLooks)
 for (const zone of ZONES) {
   zone.build?.(zone, addObstacle)?.then(() => {
     for (const p of portals) {
       if (p.from !== zone) continue;
       p.afloat = waterAt(zone, p.x, p.z) !== null;
-      p.group.position.y = p.afloat ? waterAt(zone, p.x, p.z) - PORTAL_SINK : groundAt(zone, p.x, p.z);
+      p.group.position.y = p.afloat ? afloatHeight(zone, p) : groundAt(zone, p.x, p.z);
     }
     for (const s of signs) if (s.zone === zone) s.group.position.y = groundAt(zone, s.x, s.z);
   });
@@ -807,6 +807,12 @@ function addPortal(x, z, fromZone, toZone, face, y = groundAt(fromZone, x, z)) {
   portals.push({ x, z, from: fromZone, to: toZone, face, group, update, fade: 1 });
 }
 
+// A portal out in the water: up on the deck it stands on (the raft, which bobs), or floating
+function afloatHeight(zone, p) {
+  const deck = zone.deckAt?.(p.x - zone.x, Infinity, p.z - zone.z) ?? -Infinity;
+  return deck > -Infinity ? deck : waterAt(zone, p.x, p.z) - PORTAL_SINK;
+}
+
 // A portal melts away while the camera's right behind it (as it is when you
 // arrive through one), so it doesn't block your first view of the zone
 function updatePortalLooks(dt) {
@@ -816,7 +822,7 @@ function updatePortalLooks(dt) {
     const faceX = p.face.x - p.x, faceZ = p.face.z - p.z;
     const behind = (toCamX * faceX + toCamZ * faceZ) / (Math.hypot(faceX, faceZ) || 1) < 1.5 && Math.hypot(toCamX, toCamZ) < 14;
     p.fade += ((behind ? 0 : 1) - p.fade) * Math.min(1, dt * 6);
-    if (p.afloat) p.group.position.y = waterAt(currentZone, p.x, p.z) - PORTAL_SINK;
+    if (p.afloat) p.group.position.y = afloatHeight(currentZone, p);
     p.update(timer.getElapsed(), p.fade);
   }
 }

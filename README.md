@@ -122,7 +122,7 @@ Run the tools with `node tools/inspect-glb.mjs path/to/file.glb`. If you change 
 
 Each entry in `ZONES` (in [src/main.js](src/main.js)) has a `name`, center `x`/`z`, a `ground` color and a `portal` color. A custom zone spreads in an object from its own module, which can provide:
 
-- `build(zone, addObstacle)`: adds the scenery to `zone.group`. It may return a promise; the beach does this so its portals can be lifted onto the sand once the terrain has baked. A portal whose spot is in water floats there instead, bobbing with it (`PORTAL_SINK` in [src/main.js](src/main.js) is how far down it sits), and you come out of it swimming. Hawaii's Farm portal is out in the lagoon, so you swim to it.
+- `build(zone, addObstacle)`: adds the scenery to `zone.group`. It may return a promise; the beach does this so its portals can be lifted onto the sand once the terrain has baked. A portal whose spot is in water floats there instead, bobbing with it (`PORTAL_SINK` in [src/main.js](src/main.js) is how far down it sits), and you come out of it swimming. Hawaii's Farm portal stands on the raft out in the lagoon (on a deck, a portal stands on it instead, and rides it as it bobs), so you swim out to it.
 - `bounds: { halfX, halfZ }`: a rectangular walkable area. Without it, the zone is a disc of `ZONE_RADIUS`.
 - `portalSpots: { [zoneName]: { x, z, face?, y? } }`: hand-placed portals, in coordinates local to the zone center.
 - `spawn: { x, z, face: { x, z } }` (the first zone only): where the game starts and the point the character looks at, with the camera right behind.
